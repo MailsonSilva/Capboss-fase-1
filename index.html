@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momento Capiboss - Fase 1: Dinheiro tem valor?</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0c1414;
+            overflow: hidden;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #game-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 56.25vw; 
+            max-height: 100vh;
+            max-width: 177.78vh;
+        }
+        #game-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('assets/fundo.jpeg'); /* CAMINHO LOCAL */
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+            transition: filter 0.5s ease-in-out;
+        }
+        #game-content.blurred {
+            filter: blur(8px);
+        }
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 30;
+            opacity: 1;
+            transition: opacity 0.5s ease-in-out;
+        }
+        #start-btn {
+            padding: 20px 40px;
+            font-size: 2rem;
+            background-color: #FFDE00;
+            color: #333;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 0 20px #FFDE00, 0 0 30px #FFDE00;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        #chest-container {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            bottom: 18%;
+            width: 15%;
+            height: auto;
+            padding-bottom: 15%;
+            max-width: 200px;
+            max-height: 200px;
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+        }
+        #chest-container.clicked {
+            transform: translateX(-50%) scale(0.95);
+        }
+        #chest-closed, #chest-open {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: opacity 0.3s ease-in-out;
+            object-fit: contain;
+        }
+        #chest-open {
+            opacity: 0;
+        }
+        .object-popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20%;
+            height: auto;
+            padding-bottom: 20%;
+            max-width: 180px;
+            max-height: 180px;
+            transform: translate(-50%, -50%) scale(0);
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            z-index: 10;
+            cursor: pointer;
+        }
+        .object-popup-image {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+        .object-popup.show {
+            transform: translate(-50%, -50%) scale(1.5);
+        }
+        .object-popup.shrink {
+            transition: all 0.8s ease-in-out;
+        }
+        #collected-items-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            padding: 5px;
+            width: 100%;
+            height: 18%;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-top: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        .collected-item-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 0.5%;
+            width: 10%;
+            height: 100%;
+            max-width: 80px;
+        }
+        .collected-item-image {
+            width: 70%;
+            height: 0;
+            padding-bottom: 70%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border-radius: 10px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .collected-item-name {
+            color: white;
+            font-size: clamp(0.5rem, 1.5vmin, 0.8rem);
+            margin-top: 4px;
+            text-shadow: 1px 1px 2px black;
+            text-align: center;
+            line-height: 1.2;
+        }
+        .game-title-container {
+            position: absolute;
+            top: 2%;
+            left: 2%;
+            padding: 1%;
+            text-align: left;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 10px;
+        }
+        .main-title {
+            font-size: clamp(1.2rem, 4vmin, 2.2rem);
+            font-weight: bold;
+            color: #FFDE00;
+            text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.6);
+        }
+        .sub-title {
+            font-size: clamp(0.8rem, 2.5vmin, 1.2rem);
+            font-weight: normal;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+        }
+        .controls {
+            position: absolute;
+            top: 2%;
+            right: 2%;
+            display: flex;
+            gap: 10px;
+        }
+        .control-btn {
+            width: clamp(35px, 6vmin, 50px);
+            height: clamp(35px, 6vmin, 50px);
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #end-game-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        #end-game-modal.show {
+            display: flex;
+            opacity: 1;
+        }
+        .modal-content {
+            background-color: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            color: #333;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        #restart-modal-btn, #end-game-modal p {
+            font-size: clamp(1rem, 3vmin, 1.5rem);
+        }
+        #restart-modal-btn {
+            margin-top: 20px;
+            padding: 10px 25px;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <!-- ELEMENTO DE ÁUDIO PARA MÚSICA DE FUNDO -->
+    <audio id="background-music" loop src="musica_fundo.wav"></audio>
+
+    <div id="game-wrapper">
+        <div id="start-screen">
+            <button id="start-btn">Iniciar</button>
+        </div>
+
+        <div id="game-content" class="blurred">
+            <div class="game-container">
+                <div class="game-title-container">
+                    <h1 class="game-title">
+                        <span class="main-title">Momento Capiboss</span>
+                        <span class="sub-title">Fase 1: Dinheiro tem valor?</span>
+                    </h1>
+                </div>
+
+                <div class="controls">
+                    <button id="sound-toggle" class="control-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="50%" height="50%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path id="sound-on-icon" d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path><line id="sound-off-icon" x1="23" y1="1" x2="1" y2="23" style="display: none;"></line></svg>
+                    </button>
+                    <button id="restart-btn" class="control-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="50%" height="50%" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                    </button>
+                </div>
+
+                <div id="chest-container">
+                    <!-- CAMINHOS LOCAIS -->
+                    <img id="chest-closed" src="assets/bau_fechado.png" alt="Baú Fechado">
+                    <img id="chest-open" src="assets/bau_aberto.png" alt="Baú Aberto">
+                </div>
+                
+                <div id="collected-items-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="end-game-modal">
+        <div class="modal-content">
+            <p>Parabéns!</p>
+            <p>Você encontrou todos os tesouros!</p>
+            <button id="restart-modal-btn">Recomeçar</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Elementos do DOM ---
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const gameContent = document.getElementById('game-content');
+        const chestContainer = document.getElementById('chest-container');
+        const chestClosed = document.getElementById('chest-closed');
+        const chestOpen = document.getElementById('chest-open');
+        const collectedItemsContainer = document.getElementById('collected-items-container');
+        const soundToggle = document.getElementById('sound-toggle');
+        const restartBtn = document.getElementById('restart-btn');
+        const restartModalBtn = document.getElementById('restart-modal-btn');
+        const soundOnIcon = document.getElementById('sound-on-icon');
+        const soundOffIcon = document.getElementById('sound-off-icon');
+        const endGameModal = document.getElementById('end-game-modal');
+        const music = document.getElementById('background-music'); // Pega o elemento de áudio
+
+        // --- Configurações do Jogo ---
+        const objects = [ // CAMINHOS LOCAIS
+            { id: 'cedulas', name: 'Cédulas', imageUrl: 'assets/Cédulas.png' },
+            { id: 'moedas', name: 'Moedas', imageUrl: 'assets/Moedas.png' },
+            { id: 'pix', name: 'PIX', imageUrl: 'assets/Pix.png' },
+            { id: 'cartao', name: 'Cartão de Crédito', imageUrl: 'assets/Cartão de Crédito.png' },
+            { id: 'banco', name: 'Banco', imageUrl: 'assets/Banco.png' },
+            { id: 'carteira', name: 'Carteira', imageUrl: 'assets/Carteira.png' },
+            { id: 'cofre', name: 'Cofre', imageUrl: 'assets/Cofre.png' },
+            { id: 'calculadora', name: 'Calculadora', imageUrl: 'assets/Calculadora.png' },
+            { id: 'caixa', name: 'Caixa Eletrônico', imageUrl: 'assets/Caixa Eletrônico.png' }
+        ];
+        let availableObjects = [...objects];
+        let isChestInteractable = true;
+        let isMusicOn = true;
+
+        // --- Configuração de Áudio (Tone.js para EFEITOS) ---
+        let clickSynth, itemSynth;
+
+        function setupAudioEffects() {
+            clickSynth = new Tone.Synth({
+                oscillator: { type: 'sine' },
+                envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 }
+            }).toDestination();
+            
+            itemSynth = new Tone.PluckSynth().toDestination();
+        }
+
+        // --- Funções do Jogo ---
+        function startGame() {
+            availableObjects = [...objects];
+            collectedItemsContainer.innerHTML = '';
+            isChestInteractable = true;
+            chestClosed.style.opacity = '1';
+            chestOpen.style.opacity = '0';
+            endGameModal.classList.remove('show');
+            updateSoundIcon();
+        }
+        
+        function handleChestClick() {
+            if (!isChestInteractable || availableObjects.length === 0) return;
+            isChestInteractable = false;
+            playSound(clickSynth, 'C4', '16n');
+            chestClosed.style.opacity = '0';
+            chestOpen.style.opacity = '1';
+            setTimeout(() => {
+                if (availableObjects.length > 0) releaseObject();
+                else closeChest();
+            }, 500);
+        }
+
+        function releaseObject() {
+            const objectIndex = Math.floor(Math.random() * availableObjects.length);
+            const [selectedObject] = availableObjects.splice(objectIndex, 1);
+
+            playSound(itemSynth, 'G5', '8n');
+
+            const popup = document.createElement('div');
+            popup.className = 'object-popup';
+            
+            const popupImage = document.createElement('div');
+            popupImage.className = 'object-popup-image';
+            popupImage.style.backgroundImage = `url("${selectedObject.imageUrl}")`;
+            popup.appendChild(popupImage);
+
+            gameContent.appendChild(popup);
+
+            setTimeout(() => popup.classList.add('show'), 100);
+            
+            popup.addEventListener('click', () => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'collected-item-wrapper';
+
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'collected-item-image';
+                imageDiv.style.backgroundImage = `url("${selectedObject.imageUrl}")`;
+                
+                const nameP = document.createElement('p');
+                nameP.className = 'collected-item-name';
+                nameP.textContent = selectedObject.name;
+
+                wrapper.appendChild(imageDiv);
+                wrapper.appendChild(nameP);
+                collectedItemsContainer.appendChild(wrapper);
+                
+                const targetRect = imageDiv.getBoundingClientRect();
+                const popupRect = popup.getBoundingClientRect();
+
+                popup.classList.add('shrink');
+                popup.style.transform = `translate(${targetRect.left - popupRect.left}px, ${targetRect.top - popupRect.top}px) scale(0.5)`;
+                popup.style.opacity = '0';
+
+                setTimeout(() => {
+                    popup.remove();
+                    closeChest();
+                }, 800);
+            }, { once: true });
+        }
+
+        function closeChest() {
+            chestClosed.style.opacity = '1';
+            chestOpen.style.opacity = '0';
+            if (availableObjects.length > 0) {
+                isChestInteractable = true;
+            } else {
+                 setTimeout(() => endGameModal.classList.add('show'), 500);
+            }
+        }
+
+        // --- Funções de Controle ---
+        function updateSoundIcon() {
+            if (isMusicOn) {
+                soundOnIcon.style.display = 'block';
+                soundOffIcon.style.display = 'none';
+            } else {
+                soundOnIcon.style.display = 'none';
+                soundOffIcon.style.display = 'block';
+            }
+        }
+
+        function toggleMusic() {
+            isMusicOn = !isMusicOn;
+            if (isMusicOn) {
+                music.play();
+            } else {
+                music.pause();
+            }
+            updateSoundIcon();
+        }
+
+        function playSound(synth, note, duration) {
+            if (synth) synth.triggerAttackRelease(note, duration);
+        }
+
+        // --- Event Listeners ---
+        startBtn.addEventListener('click', () => {
+            startScreen.style.opacity = '0';
+            gameContent.classList.remove('blurred');
+            setTimeout(() => {
+                startScreen.style.display = 'none';
+            }, 500);
+
+            // Inicia o contexto de áudio para os efeitos sonoros
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
+            
+            // Toca a música de fundo
+            if (isMusicOn) {
+                music.play();
+            }
+        });
+
+        chestContainer.addEventListener('click', handleChestClick);
+        soundToggle.addEventListener('click', toggleMusic);
+        restartBtn.addEventListener('click', startGame);
+        restartModalBtn.addEventListener('click', startGame);
+
+        chestContainer.addEventListener('mousedown', () => {
+            if (isChestInteractable) chestContainer.classList.add('clicked');
+        });
+        chestContainer.addEventListener('mouseup', () => chestContainer.classList.remove('clicked'));
+        chestContainer.addEventListener('mouseleave', () => chestContainer.classList.remove('clicked'));
+
+        // --- Inicialização ---
+        window.onload = () => {
+            setupAudioEffects();
+            startGame();
+        };
+    </script>
+</body>
+</html>
